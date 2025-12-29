@@ -1,0 +1,12 @@
+{
+  "name": "juego-plataforma-cubo",
+  "version": "1.0.0",
+  "description": "Juego 2D simple: plataforma blanca y cubo rojo controlable",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.4"
+  }
+}
