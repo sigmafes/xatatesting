@@ -24,6 +24,36 @@ nameBtn.addEventListener('click', ()=>{
   if(v.length>0){ socket.emit('setName', v); }
 });
 
+// Chat UI
+const chatMessages = document.getElementById('chatMessages');
+const chatInput = document.getElementById('chatInput');
+const chatBtn = document.getElementById('chatBtn');
+const chatName = document.getElementById('chatName');
+
+function addChatMessage(name, text, me=false){
+  if(!chatMessages) return;
+  const el = document.createElement('div');
+  el.className = 'chat-msg' + (me? ' me':'');
+  el.innerText = `${name}: ${text}`;
+  chatMessages.appendChild(el);
+  chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+chatBtn.addEventListener('click', ()=>{
+  const name = (chatName.value.trim() || nameInput.value.trim() || player.name || 'Guest');
+  const text = chatInput.value.trim();
+  if(text.length===0) return;
+  socket.emit('chat', {name, text});
+  addChatMessage(name, text, true);
+  chatInput.value = '';
+});
+
+// receive chat from server
+socket.on('chat', msg => {
+  if(!msg) return;
+  addChatMessage(msg.name || 'Guest', msg.text || '');
+});
+
 
 const WIDTH = canvas.width;
 const HEIGHT = canvas.height;

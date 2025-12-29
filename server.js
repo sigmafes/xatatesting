@@ -39,6 +39,14 @@ io.on('connection', socket => {
     }
   });
 
+  socket.on('chat', msg => {
+    // broadcast chat to everyone
+    if(msg && typeof msg.text === 'string'){
+      const out = { name: (msg.name || players[id].name || 'Guest'), text: msg.text };
+      io.emit('chat', out);
+    }
+  });
+
   socket.on('disconnect', ()=>{
     delete players[id];
   });

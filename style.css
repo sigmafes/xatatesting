@@ -1,12 +1,23 @@
 *{box-sizing:border-box;margin:0;padding:0}
+.info{display:none}
 html,body{height:100%}
-body{display:flex;align-items:center;justify-content:center;background:linear-gradient(#bfefff,#eaf6ff);font-family:Arial,Helvetica,sans-serif}
-canvas{background:#eef7ff;border:2px solid #cfe8ff;display:block}
+body{display:flex;align-items:center;justify-content:center;background:linear-gradient(180deg,#02121a,#042731);font-family:Arial,Helvetica,sans-serif;color:#e6f7ff}
+canvas{background:#021a24;border:2px solid #023443;display:block;box-shadow:0 6px 20px rgba(0,0,0,0.6)}
 
-/* HUD */
-.info{position:fixed;left:8px;top:8px;font-size:14px;color:#333}
+/* HUD hidden - controls drawn removed */
+.info{position:fixed;left:8px;top:8px;font-size:14px;color:#cfe8ff;display:none}
 
-.namebox{position:fixed;right:12px;top:12px;background:rgba(255,255,255,0.9);padding:6px;border-radius:6px;display:flex;gap:6px;align-items:center;box-shadow:0 2px 6px rgba(0,0,0,0.08)}
-.namebox input{padding:6px;border:1px solid #ccc;border-radius:4px}
-.namebox button{padding:6px 10px;border-radius:4px;border:1px solid #2b7;cursor:pointer;background:#e6f7ff}
+.namebox{position:fixed;right:12px;top:12px;background:rgba(2,20,30,0.9);padding:6px;border-radius:6px;display:flex;gap:6px;align-items:center;box-shadow:0 4px 12px rgba(0,0,0,0.6)}
+.namebox input{padding:6px;border:1px solid rgba(255,255,255,0.06);border-radius:4px;background:transparent;color:#e6f7ff}
+.namebox button{padding:6px 10px;border-radius:4px;border:1px solid rgba(255,255,255,0.06);cursor:pointer;background:#044d6b;color:#e6f7ff}
+
+/* Chat box */
+.chat{position:fixed;right:12px;bottom:12px;width:340px;background:rgba(1,18,24,0.95);color:#dff; border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,0.6);display:flex;flex-direction:column;overflow:hidden;font-size:13px}
+.chat .chat-messages{height:180px;overflow:auto;padding:8px;display:flex;flex-direction:column;gap:6px}
+.chat .chat-msg{padding:6px;border-radius:6px;background:rgba(255,255,255,0.02);word-break:break-word}
+.chat .chat-msg.me{background:rgba(75,150,255,0.12);align-self:flex-end}
+.chat .chat-input{display:flex;gap:6px;padding:8px;border-top:1px solid rgba(255,255,255,0.03)}
+.chat .chat-input input[type="text"]{flex:1;padding:6px;border-radius:6px;border:1px solid rgba(255,255,255,0.06);background:transparent;color:#e6f7ff}
+.chat .chat-input button{padding:6px 10px;border-radius:6px;border:1px solid rgba(255,255,255,0.06);background:#045a8d;color:#e6f7ff;cursor:pointer}
+
 
