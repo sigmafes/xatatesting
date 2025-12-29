@@ -5,3 +5,8 @@ canvas{background:#eef7ff;border:2px solid #cfe8ff;display:block}
 
 /* HUD */
 .info{position:fixed;left:8px;top:8px;font-size:14px;color:#333}
+
+.namebox{position:fixed;right:12px;top:12px;background:rgba(255,255,255,0.9);padding:6px;border-radius:6px;display:flex;gap:6px;align-items:center;box-shadow:0 2px 6px rgba(0,0,0,0.08)}
+.namebox input{padding:6px;border:1px solid #ccc;border-radius:4px}
+.namebox button{padding:6px 10px;border-radius:4px;border:1px solid #2b7;cursor:pointer;background:#e6f7ff}
+

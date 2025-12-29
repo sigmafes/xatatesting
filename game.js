@@ -1,11 +1,36 @@
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
 
+// Socket.IO
+const socket = io();
+
+let clientId = null;
+const otherPlayers = {};
+
+socket.on('connect', ()=>{ clientId = socket.id; });
+socket.on('state', players => {
+  // replace otherPlayers except keep local player separate
+  for(const id in otherPlayers) delete otherPlayers[id];
+  for(const id in players){
+    otherPlayers[id] = players[id];
+  }
+});
+
+// name change UI
+const nameInput = document.getElementById('nameInput');
+const nameBtn = document.getElementById('nameBtn');
+nameBtn.addEventListener('click', ()=>{
+  const v = nameInput.value.trim();
+  if(v.length>0){ socket.emit('setName', v); }
+});
+
+
 const WIDTH = canvas.width;
 const HEIGHT = canvas.height;
 
 // Player
 const player = {
+  id: null,
   x: 80,
   y: 0,
   w: 32,
@@ -15,7 +40,8 @@ const player = {
   color: '#d83b3b',
   speed: 3.2,
   jumpPower: 9.5,
-  onGround: false
+  onGround: false,
+  name: ''
 };
 
 // Simple platform (white) -- a floor and a raised platform
@@ -88,6 +114,11 @@ function update(){
       }
     }
   }
+
+  // send update to server
+  if(socket && socket.connected){
+    socket.emit('update', {x:player.x, y:player.y, w:player.w, h:player.h});
+  }
 }
 
 function draw(){
@@ -101,11 +132,35 @@ function draw(){
     ctx.strokeRect(p.x, p.y, p.w, p.h);
   }
 
+  // other players
+  for(const id in otherPlayers){
+    const p = otherPlayers[id];
+    if(!p) continue;
+    if(id === clientId) continue; // skip local; draw local after
+    ctx.save();
+    ctx.globalAlpha = 0.5;
+    ctx.fillStyle = '#2b6bd8';
+    ctx.fillRect(p.x, p.y, p.w, p.h);
+    ctx.strokeStyle = '#1a4a9a';
+    ctx.strokeRect(p.x, p.y, p.w, p.h);
+    ctx.restore();
+    // name
+    ctx.fillStyle = '#112';
+    ctx.font = '12px Arial';
+    ctx.fillText(p.name || '', p.x, p.y - 6);
+  }
+
   // player (red cube)
   ctx.fillStyle = player.color;
   ctx.fillRect(player.x, player.y, player.w, player.h);
   ctx.strokeStyle = '#7a0000';
   ctx.strokeRect(player.x, player.y, player.w, player.h);
+  // own name (if available from server state)
+  const me = otherPlayers[clientId];
+  const myName = (me && me.name) ? me.name : (player.name || '');
+  ctx.fillStyle = '#112';
+  ctx.font = '12px Arial';
+  ctx.fillText(myName, player.x, player.y - 6);
 
   // HUD
   ctx.fillStyle = '#222';
@@ -117,4 +172,12 @@ function loop(){ update(); draw(); requestAnimationFrame(loop); }
 
 // init
 player.y = 0;
+// attempt to set input placeholder to default name when server sends state
+socket.on('state', players => {
+  if(clientId && players && players[clientId] && players[clientId].name){
+    player.name = players[clientId].name;
+    if(nameInput && !nameInput.value) nameInput.placeholder = players[clientId].name;
+  }
+});
+
 loop();
