@@ -237,3 +237,20 @@ if(isAndroid && touchControls){
     if(player.onGround){ player.vy = -player.jumpPower; player.onGround = false; }
   });
 }
+
+// adjust GUI scale on Android only (do not change canvas size)
+function adjustGuiScale(){
+  if(!isAndroid) return;
+  const nameboxEl = document.querySelector('.namebox');
+  const chatEl = document.getElementById('chat');
+  const controlsEl = document.getElementById('touchControls');
+  // scale relative to canvas logical size
+  const scale = Math.min(window.innerWidth / WIDTH, window.innerHeight / HEIGHT, 1);
+  [nameboxEl, chatEl, controlsEl].forEach(el => { if(el) el.style.transform = `scale(${scale})`; });
+}
+
+if(isAndroid){
+  adjustGuiScale();
+  window.addEventListener('resize', adjustGuiScale);
+  window.addEventListener('orientationchange', adjustGuiScale);
+}
