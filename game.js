@@ -75,12 +75,14 @@ const player = {
 
 // Platforms: red platform near bottom (not touching floor) and a white platform 20px above it
 // Red platform will kill player on contact. White platform sits above and is half width of red.
-const redPlatform = { w: 400, h: 20 };
-redPlatform.x = (WIDTH - redPlatform.w) / 2;
+// red platform spans full canvas width
+const redPlatform = { w: WIDTH, h: 20 };
+redPlatform.x = 0;
 redPlatform.y = HEIGHT - redPlatform.h - 40; // 40px margin from bottom
 
-const whitePlatform = { w: Math.floor(redPlatform.w / 2), h: 20 };
-whitePlatform.x = redPlatform.x + (redPlatform.w - whitePlatform.w) / 2;
+// white platform is larger now (75% of red width) and a bit taller
+const whitePlatform = { w: Math.floor(redPlatform.w * 0.75), h: 28 };
+whitePlatform.x = redPlatform.x + Math.floor((redPlatform.w - whitePlatform.w) / 2);
 whitePlatform.y = redPlatform.y - 20 - whitePlatform.h; // 20px above red
 
 const platforms = [ whitePlatform ]; // only the white platform is landable
