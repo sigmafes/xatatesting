@@ -133,12 +133,13 @@ setInterval(()=>{
       const p = players[pid];
       if(!p || p.dead) continue;
       if(b.x < p.x + p.w && b.x + b.w > p.x && b.y < p.y + p.h && b.y + b.h > p.y){
-        // apply stronger push (x3 effect)
+        // apply stronger horizontal push; add a small downward vertical nudge
         const pushX = b.vx * 1.2;
-        const pushY = -Math.abs(b.vy) * 0.6;
+        // avoid giving a large upward velocity; instead apply a small downward nudge
+        const pushY = Math.min(Math.abs(b.vy) * 0.15, 6);
         p.vx = (p.vx || 0) + pushX;
         p.vy = (p.vy || 0) + pushY;
-        // also nudge player's position immediately so client sees movement
+        // nudge player's position so clients perceive immediate movement
         p.x += pushX * 0.6;
         p.y += pushY * 0.6;
         // separate box from player to avoid sticking
