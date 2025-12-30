@@ -18,13 +18,20 @@ socket.on('state', state => {
   // update boxes
   for(const id in boxes) delete boxes[id];
   if(state.boxes){ for(const id in state.boxes) boxes[id] = state.boxes[id]; }
-  // if server provides authoritative data for our player, apply pushes/positions
+  // if server provides authoritative data for our player, apply velocities and handle respawn transitions
   if(clientId && state.players && state.players[clientId]){
     const sp = state.players[clientId];
+    const wasDead = !!player.dead;
     if(sp.dead) player.dead = true;
-    // apply server position/velocity to local player to reflect pushes
-    if(typeof sp.x === 'number') player.x = sp.x;
-    if(typeof sp.y === 'number') player.y = sp.y;
+    // if we transitioned from dead -> alive on server, place player at server position or spawn
+    if(!sp.dead && wasDead){
+      player.dead = false;
+      if(typeof sp.x === 'number') player.x = sp.x;
+      else player.x = spawn.x;
+      if(typeof sp.y === 'number') player.y = sp.y;
+      else player.y = spawn.y;
+    }
+    // apply server velocities so pushes integrate locally with gravity
     if(typeof sp.vx === 'number') player.vx = sp.vx;
     if(typeof sp.vy === 'number') player.vy = sp.vy;
   }
