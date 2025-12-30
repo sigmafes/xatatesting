@@ -44,7 +44,14 @@ io.on('connection', socket => {
   });
 
   socket.on('setDead', ()=>{
-    if(players[id]) players[id].dead = true;
+    if(players[id]){
+      players[id].dead = true;
+      // clear any push velocities so player won't be launched on respawn
+      players[id].vx = 0;
+      players[id].vy = 0;
+      players[id].forceVelUntil = 0;
+      players[id].serverUpdate = Date.now();
+    }
   });
 
   socket.on('respawn', coords => {
@@ -52,8 +59,11 @@ io.on('connection', socket => {
       players[id].dead = false;
       if(coords && typeof coords.x === 'number') players[id].x = coords.x;
       if(coords && typeof coords.y === 'number') players[id].y = coords.y;
+      // ensure velocities are reset on respawn to avoid residual push
+      players[id].vx = 0;
+      players[id].vy = 0;
       players[id].serverUpdate = Date.now();
-      players[id].forceVelUntil = Date.now() + 500;
+      players[id].forceVelUntil = Date.now() + 250;
     }
   });
 
