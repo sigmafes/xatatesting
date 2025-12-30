@@ -6,14 +6,18 @@ const socket = io();
 
 let clientId = null;
 const otherPlayers = {};
+const boxes = {};
 
 socket.on('connect', ()=>{ clientId = socket.id; });
-socket.on('state', players => {
-  // replace otherPlayers except keep local player separate
+socket.on('state', state => {
+  // state is {players, boxes}
+  const players = state.players || state;
+  // update players map
   for(const id in otherPlayers) delete otherPlayers[id];
-  for(const id in players){
-    otherPlayers[id] = players[id];
-  }
+  for(const id in players){ otherPlayers[id] = players[id]; }
+  // update boxes
+  for(const id in boxes) delete boxes[id];
+  if(state.boxes){ for(const id in state.boxes) boxes[id] = state.boxes[id]; }
 });
 
 // name change UI
@@ -97,6 +101,14 @@ const keys = {};
 window.addEventListener('keydown', e => { keys[e.key.toLowerCase()]=true; });
 window.addEventListener('keyup', e => { keys[e.key.toLowerCase()]=false; });
 
+// handle spawn box on Space (single press)
+window.addEventListener('keydown', e => {
+  if(e.code === 'Space' && !e.repeat){
+    spawnBox();
+    e.preventDefault();
+  }
+});
+
 const gravity = 0.5;
 
 function rectsIntersect(a,b){
@@ -114,6 +126,10 @@ function update(){
   if(left){ player.vx = -player.speed; }
   else if(right){ player.vx = player.speed; }
   else { player.vx = 0; }
+
+  // update facing
+  if(left) player.facing = -1;
+  else if(right) player.facing = 1;
 
   // jump
   if(jump && player.onGround){ player.vy = -player.jumpPower; player.onGround = false; }
@@ -180,6 +196,13 @@ function update(){
   }
 }
 
+function spawnBox(){
+  if(player.dead) return;
+  const dx = player.facing || 1;
+  const dy = -0.15;
+  socket.emit('spawnBox', {dx, dy});
+}
+
 function draw(){
   ctx.clearRect(0,0,WIDTH,HEIGHT);
 
@@ -226,6 +249,16 @@ function draw(){
 
   // player (red cube) - don't draw if dead
   if(!player.dead){
+  
+    // draw boxes
+    for(const bid in boxes){
+      const b = boxes[bid];
+      if(!b) continue;
+      ctx.fillStyle = '#ffd24d';
+      ctx.fillRect(b.x, b.y, b.w, b.h);
+      ctx.strokeStyle = '#b37f00';
+      ctx.strokeRect(b.x, b.y, b.w, b.h);
+    }
     ctx.fillStyle = player.color;
     ctx.fillRect(player.x, player.y, player.w, player.h);
     ctx.strokeStyle = '#7a0000';
@@ -259,6 +292,7 @@ loop();
 const touchControls = document.getElementById('touchControls');
 const touchLeft = document.getElementById('touchLeft');
 const touchRight = document.getElementById('touchRight');
+const touchShoot = document.getElementById('touchShoot');
 const isAndroid = /Android/i.test(navigator.userAgent) || (/Android/i.test(navigator.platform || ''));
 if(isAndroid && touchControls){
   touchControls.style.display = 'flex';
@@ -281,6 +315,11 @@ if(isAndroid && touchControls){
     if(player.dead) return;
     if(player.onGround){ player.vy = -player.jumpPower; player.onGround = false; }
   });
+
+  // shoot button above left
+  if(touchShoot){
+    touchShoot.addEventListener('pointerdown', e=>{ e.preventDefault(); spawnBox(); });
+  }
 }
 
 // adjust GUI scale on Android only (do not change canvas size)

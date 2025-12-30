@@ -10,7 +10,11 @@ const io = new Server(server);
 const staticDir = path.join(__dirname);
 app.use(express.static(staticDir));
 
+const WIDTH = 800;
+const HEIGHT = 450;
+
 const players = {};
+const boxes = {};
 
 function randomId4(){
   return Math.random().toString(36).slice(2,6).toUpperCase();
@@ -19,7 +23,7 @@ function randomId4(){
 io.on('connection', socket => {
   const id = socket.id;
   const name = `Guest_${randomId4()}`;
-  players[id] = { id, x:80, y:0, w:32, h:32, name, dead: false };
+  players[id] = { id, x:80, y:0, w:32, h:32, name, dead: false, vx:0, vy:0 };
 
   // send full state on connect
   socket.emit('state', players);
@@ -59,14 +63,87 @@ io.on('connection', socket => {
     }
   });
 
+  socket.on('spawnBox', vec => {
+    if(!players[id] || players[id].dead) return;
+    const speed = 10;
+    const boxId = id + '_' + Date.now();
+    const owner = id;
+    const px = players[id].x + players[id].w/2 - 8;
+    const py = players[id].y + players[id].h/2 - 8;
+    const dx = (vec && typeof vec.dx === 'number') ? vec.dx : 1;
+    const dy = (vec && typeof vec.dy === 'number') ? vec.dy : -0.2;
+    boxes[boxId] = {
+      id: boxId,
+      owner,
+      x: px + dx*20,
+      y: py + dy*20,
+      w: 16,
+      h: 16,
+      vx: dx * speed,
+      vy: dy * speed,
+      born: Date.now()
+    };
+  });
+
   socket.on('disconnect', ()=>{
     delete players[id];
   });
 });
 
 // broadcast state at 20Hz
+// broadcast state + physics for boxes at 20Hz
 setInterval(()=>{
-  io.emit('state', players);
+  // simulate boxes
+  const gravity = 0.5;
+  // define platforms same as client
+  const redPlatform = { x:0, w: WIDTH, h:20, y: HEIGHT - 20 - 40 };
+  const whitePlatform = { w: Math.floor(redPlatform.w * 0.75), h:28 };
+  whitePlatform.x = redPlatform.x + Math.floor((redPlatform.w - whitePlatform.w) / 2);
+  whitePlatform.y = redPlatform.y - 20 - whitePlatform.h;
+
+  const now = Date.now();
+  for(const id in boxes){
+    const b = boxes[id];
+    // integrate
+    b.vy += gravity;
+    b.x += b.vx;
+    b.y += b.vy;
+
+    // lifetime
+    if(now - b.born > 10000) { delete boxes[id]; continue; }
+
+    // out of bounds
+    if(b.x + b.w < -100 || b.x > WIDTH + 100 || b.y > HEIGHT + 200){ delete boxes[id]; continue; }
+
+    // collide with white platform
+    if(b.x < whitePlatform.x + whitePlatform.w && b.x + b.w > whitePlatform.x && b.y < whitePlatform.y + whitePlatform.h && b.y + b.h > whitePlatform.y){
+      // simple resolution: if coming from above
+      if(b.y + b.h - b.vy <= whitePlatform.y){
+        b.y = whitePlatform.y - b.h;
+        b.vy = 0;
+        b.vx *= 0.6;
+      } else {
+        // horizontal collision
+        b.vx = -b.vx * 0.3;
+      }
+    }
+
+    // collide with players and push
+    for(const pid in players){
+      const p = players[pid];
+      if(!p || p.dead) continue;
+      if(b.x < p.x + p.w && b.x + b.w > p.x && b.y < p.y + p.h && b.y + b.h > p.y){
+        // apply push
+        p.vx = (p.vx || 0) + b.vx * 0.4;
+        p.vy = (p.vy || 0) - Math.abs(b.vy) * 0.2;
+        // damp box velocity a bit
+        b.vx *= 0.6;
+        b.vy *= 0.6;
+      }
+    }
+  }
+
+  io.emit('state', { players, boxes });
 }, 50);
 
 const port = process.env.PORT || 3000;
