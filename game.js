@@ -73,12 +73,23 @@ const player = {
   name: ''
 };
 
-// Simple platform (white) -- a floor and a raised platform
-const platforms = [
-  {x:0,y:HEIGHT-40,w:WIDTH,h:40},
-  {x:200,y:HEIGHT-120,w:250,h:20},
-  {x:520,y:HEIGHT-180,w:180,h:20}
-];
+// Platforms: red platform near bottom (not touching floor) and a white platform 20px above it
+// Red platform will kill player on contact. White platform sits above and is half width of red.
+const redPlatform = { w: 400, h: 20 };
+redPlatform.x = (WIDTH - redPlatform.w) / 2;
+redPlatform.y = HEIGHT - redPlatform.h - 40; // 40px margin from bottom
+
+const whitePlatform = { w: Math.floor(redPlatform.w / 2), h: 20 };
+whitePlatform.x = redPlatform.x + (redPlatform.w - whitePlatform.w) / 2;
+whitePlatform.y = redPlatform.y - 20 - whitePlatform.h; // 20px above red
+
+const platforms = [ whitePlatform ]; // only the white platform is landable
+
+// spawn point is centered above white platform
+const spawn = {
+  x: Math.floor(whitePlatform.x + whitePlatform.w/2 - 16),
+  y: Math.floor(whitePlatform.y - 32)
+};
 
 const keys = {};
 window.addEventListener('keydown', e => { keys[e.key.toLowerCase()]=true; });
@@ -91,6 +102,8 @@ function rectsIntersect(a,b){
 }
 
 function update(){
+  // if dead, don't process movement
+  if(player.dead) return;
   // horizontal input A/D
   let left = keys['a'] || keys['arrowleft'];
   let right = keys['d'] || keys['arrowright'];
@@ -113,8 +126,9 @@ function update(){
   // simple world bounds
   if(player.x < 0) player.x = 0;
   if(player.x + player.w > WIDTH) player.x = WIDTH - player.w;
-  if(player.y > HEIGHT) { // fell off
-    player.x = 80; player.y = 0; player.vx = 0; player.vy = 0;
+  if(player.y > HEIGHT) { // fell off -> respawn
+    player.x = spawn.x; player.y = spawn.y; player.vx = 0; player.vy = 0;
+    socket && socket.connected && socket.emit && socket.emit('respawn', {x:player.x, y:player.y});
   }
 
   // collision with platforms (very simple resolution)
@@ -143,9 +157,23 @@ function update(){
       }
     }
   }
+  // check collision with red platform separately (any contact kills)
+  const redProbe = {x:player.x, y:player.y, w:player.w, h:player.h};
+  if(rectsIntersect(redProbe, redPlatform)){
+    if(!player.dead){
+      player.dead = true;
+      socket && socket.connected && socket.emit && socket.emit('setDead');
+      // hide locally until respawn
+      player.x = -9999; player.y = -9999; player.vx = 0; player.vy = 0;
+      setTimeout(()=>{
+        player.x = spawn.x; player.y = spawn.y; player.vx = 0; player.vy = 0; player.dead = false;
+        socket && socket.connected && socket.emit && socket.emit('respawn', {x:player.x, y:player.y});
+      }, 10000);
+    }
+  }
 
-  // send update to server
-  if(socket && socket.connected){
+  // send update to server (only when not dead)
+  if(!player.dead && socket && socket.connected){
     socket.emit('update', {x:player.x, y:player.y, w:player.w, h:player.h});
   }
 }
@@ -153,18 +181,33 @@ function update(){
 function draw(){
   ctx.clearRect(0,0,WIDTH,HEIGHT);
 
-  // background sky already via CSS; draw platform (white)
-  for(const p of platforms){
+  // draw white platform
+  {
+    const p = whitePlatform;
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(p.x, p.y, p.w, p.h);
     ctx.strokeStyle = '#ddd';
     ctx.strokeRect(p.x, p.y, p.w, p.h);
   }
+  // draw red platform
+  {
+    const p = redPlatform;
+    ctx.fillStyle = '#b30000';
+    ctx.fillRect(p.x, p.y, p.w, p.h);
+    ctx.strokeStyle = '#800000';
+    ctx.strokeRect(p.x, p.y, p.w, p.h);
+  }
+  // draw spawn marker above white platform (center)
+  ctx.fillStyle = '#ffffff';
+  ctx.beginPath();
+  ctx.arc(spawn.x + 16, spawn.y + 16, 6, 0, Math.PI*2);
+  ctx.fill();
 
   // other players
   for(const id in otherPlayers){
     const p = otherPlayers[id];
     if(!p) continue;
+    if(p.dead) continue;
     if(id === clientId) continue; // skip local; draw local after
     ctx.save();
     ctx.globalAlpha = 0.5;
@@ -179,11 +222,13 @@ function draw(){
     ctx.fillText(p.name || '', p.x, p.y - 6);
   }
 
-  // player (red cube)
-  ctx.fillStyle = player.color;
-  ctx.fillRect(player.x, player.y, player.w, player.h);
-  ctx.strokeStyle = '#7a0000';
-  ctx.strokeRect(player.x, player.y, player.w, player.h);
+  // player (red cube) - don't draw if dead
+  if(!player.dead){
+    ctx.fillStyle = player.color;
+    ctx.fillRect(player.x, player.y, player.w, player.h);
+    ctx.strokeStyle = '#7a0000';
+    ctx.strokeRect(player.x, player.y, player.w, player.h);
+  }
   // own name (white)
   const me = otherPlayers[clientId];
   const myName = (me && me.name) ? me.name : (player.name || '');
@@ -191,10 +236,7 @@ function draw(){
   ctx.font = '12px Arial';
   ctx.fillText(myName, player.x, player.y - 6);
 
-  // HUD
-  ctx.fillStyle = '#222';
-  ctx.font = '14px Arial';
-  ctx.fillText('Controles: A izquierda, D derecha, W saltar', 8, 20);
+  // (no HUD text)
 }
 
 function loop(){ update(); draw(); requestAnimationFrame(loop); }
@@ -234,6 +276,7 @@ if(isAndroid && touchControls){
   canvas.addEventListener('pointerdown', e=>{
     // if pointer down landed on a touch button, ignore (handled above)
     // otherwise trigger jump
+    if(player.dead) return;
     if(player.onGround){ player.vy = -player.jumpPower; player.onGround = false; }
   });
 }
@@ -247,6 +290,11 @@ function adjustGuiScale(){
   // scale relative to canvas logical size
   const scale = Math.min(window.innerWidth / WIDTH, window.innerHeight / HEIGHT, 1);
   [nameboxEl, chatEl, controlsEl].forEach(el => { if(el) el.style.transform = `scale(${scale})`; });
+  // scale the canvas visually to fit on Android
+  if(canvas) {
+    canvas.style.transformOrigin = 'center center';
+    canvas.style.transform = `scale(${scale})`;
+  }
 }
 
 if(isAndroid){

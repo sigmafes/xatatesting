@@ -19,7 +19,7 @@ function randomId4(){
 io.on('connection', socket => {
   const id = socket.id;
   const name = `Guest_${randomId4()}`;
-  players[id] = { id, x:80, y:0, w:32, h:32, name };
+  players[id] = { id, x:80, y:0, w:32, h:32, name, dead: false };
 
   // send full state on connect
   socket.emit('state', players);
@@ -36,6 +36,18 @@ io.on('connection', socket => {
   socket.on('setName', newName => {
     if(typeof newName === 'string' && newName.length > 0 && newName.length <= 32){
       players[id].name = newName;
+    }
+  });
+
+  socket.on('setDead', ()=>{
+    if(players[id]) players[id].dead = true;
+  });
+
+  socket.on('respawn', coords => {
+    if(players[id]){
+      players[id].dead = false;
+      if(coords && typeof coords.x === 'number') players[id].x = coords.x;
+      if(coords && typeof coords.y === 'number') players[id].y = coords.y;
     }
   });
 

@@ -2,7 +2,7 @@
 .info{display:none}
 html,body{height:100%}
 body{display:flex;align-items:center;justify-content:center;background:linear-gradient(180deg,#02121a,#042731);font-family:Arial,Helvetica,sans-serif;color:#e6f7ff}
-canvas{background:#021a24;border:2px solid #023443;display:block;box-shadow:0 6px 20px rgba(0,0,0,0.6)}
+canvas{background:#021a24;border:2px solid #023443;display:block;box-shadow:0 6px 20px rgba(0,0,0,0.6);transform-origin:center center}
 
 /* HUD hidden - controls drawn removed */
 .info{position:fixed;left:8px;top:8px;font-size:14px;color:#cfe8ff;display:none}
