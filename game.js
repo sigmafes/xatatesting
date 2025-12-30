@@ -7,6 +7,7 @@ const socket = io();
 let clientId = null;
 const otherPlayers = {};
 const boxes = {};
+let lastServerUpdate = 0;
 
 socket.on('connect', ()=>{ clientId = socket.id; });
 socket.on('state', state => {
@@ -18,22 +19,28 @@ socket.on('state', state => {
   // update boxes
   for(const id in boxes) delete boxes[id];
   if(state.boxes){ for(const id in state.boxes) boxes[id] = state.boxes[id]; }
-  // if server provides authoritative data for our player, apply velocities and handle respawn transitions
+  // if server provides authoritative data for our player, only apply it when server marks an authoritative update
   if(clientId && state.players && state.players[clientId]){
     const sp = state.players[clientId];
     const wasDead = !!player.dead;
     if(sp.dead) player.dead = true;
-    // if we transitioned from dead -> alive on server, place player at server position or spawn
-    if(!sp.dead && wasDead){
-      player.dead = false;
+    // if server indicates an authoritative update (push/respawn)
+    if(sp.serverUpdate && sp.serverUpdate > lastServerUpdate){
+      lastServerUpdate = sp.serverUpdate;
+      // apply server authoritative position/velocity
+      player.dead = !!sp.dead;
       if(typeof sp.x === 'number') player.x = sp.x;
-      else player.x = spawn.x;
       if(typeof sp.y === 'number') player.y = sp.y;
-      else player.y = spawn.y;
+      if(typeof sp.vx === 'number') player.vx = sp.vx;
+      if(typeof sp.vy === 'number') player.vy = sp.vy;
+      player.forceVelUntil = sp.forceVelUntil || 0;
     }
-    // apply server velocities so pushes integrate locally with gravity
-    if(typeof sp.vx === 'number') player.vx = sp.vx;
-    if(typeof sp.vy === 'number') player.vy = sp.vy;
+    // if we transitioned from dead -> alive on server but no serverUpdate timestamp, handle spawn
+    if(!sp.dead && wasDead && !sp.serverUpdate){
+      player.dead = false;
+      player.x = (typeof sp.x === 'number') ? sp.x : spawn.x;
+      player.y = (typeof sp.y === 'number') ? sp.y : spawn.y;
+    }
   }
 });
 
@@ -143,6 +150,16 @@ function update(){
   if(left){ player.vx = -player.speed; }
   else if(right){ player.vx = player.speed; }
   else { player.vx = 0; }
+
+  // If server forced velocity window is active, don't override vx/vy with input
+  const now = Date.now();
+  if(now < (player.forceVelUntil || 0)){
+    // skip overriding vx (keep server-applied velocity)
+  } else {
+    if(left){ player.vx = -player.speed; }
+    else if(right){ player.vx = player.speed; }
+    else { if(!(left||right)) player.vx = 0; }
+  }
 
   // update facing
   if(left) player.facing = -1;

@@ -52,6 +52,8 @@ io.on('connection', socket => {
       players[id].dead = false;
       if(coords && typeof coords.x === 'number') players[id].x = coords.x;
       if(coords && typeof coords.y === 'number') players[id].y = coords.y;
+      players[id].serverUpdate = Date.now();
+      players[id].forceVelUntil = Date.now() + 500;
     }
   });
 
@@ -133,15 +135,19 @@ setInterval(()=>{
       const p = players[pid];
       if(!p || p.dead) continue;
       if(b.x < p.x + p.w && b.x + b.w > p.x && b.y < p.y + p.h && b.y + b.h > p.y){
-        // apply stronger horizontal push; add a small downward vertical nudge
-        const pushX = b.vx * 1.2;
-        // avoid giving a large upward velocity; instead apply a small downward nudge
+        // apply absolute horizontal velocity (drag without player resistance)
+        const pushX = b.vx * 1.0;
+        // apply a small downward component so player doesn't float
         const pushY = Math.min(Math.abs(b.vy) * 0.15, 6);
-        p.vx = (p.vx || 0) + pushX;
-        p.vy = (p.vy || 0) + pushY;
-        // nudge player's position so clients perceive immediate movement
-        p.x += pushX * 0.6;
-        p.y += pushY * 0.6;
+        // set absolute velocities (overwrite) so there's no player resistance
+        p.vx = pushX;
+        p.vy = pushY;
+        // also immediately update server-side position to reflect the push
+        p.x += pushX * 1.0;
+        p.y += pushY * 1.0;
+        // mark server authoritative update timestamp and force window
+        p.serverUpdate = Date.now();
+        p.forceVelUntil = Date.now() + 1000; // ms during which client must not override velocity
         // separate box from player to avoid sticking
         if(b.vx > 0) b.x = p.x + p.w;
         else b.x = p.x - b.w;
