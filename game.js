@@ -28,7 +28,6 @@ nameBtn.addEventListener('click', ()=>{
 const chatMessages = document.getElementById('chatMessages');
 const chatInput = document.getElementById('chatInput');
 const chatBtn = document.getElementById('chatBtn');
-const chatName = document.getElementById('chatName');
 
 function addChatMessage(name, text, me=false){
   if(!chatMessages) return;
@@ -40,7 +39,7 @@ function addChatMessage(name, text, me=false){
 }
 
 chatBtn.addEventListener('click', ()=>{
-  const name = (chatName.value.trim() || nameInput.value.trim() || player.name || 'Guest');
+  const name = (nameInput.value.trim() || player.name || 'Guest');
   const text = chatInput.value.trim();
   if(text.length===0) return;
   socket.emit('chat', {name, text});
@@ -174,8 +173,8 @@ function draw(){
     ctx.strokeStyle = '#1a4a9a';
     ctx.strokeRect(p.x, p.y, p.w, p.h);
     ctx.restore();
-    // name
-    ctx.fillStyle = '#112';
+    // name (white)
+    ctx.fillStyle = '#ffffff';
     ctx.font = '12px Arial';
     ctx.fillText(p.name || '', p.x, p.y - 6);
   }
@@ -185,10 +184,10 @@ function draw(){
   ctx.fillRect(player.x, player.y, player.w, player.h);
   ctx.strokeStyle = '#7a0000';
   ctx.strokeRect(player.x, player.y, player.w, player.h);
-  // own name (if available from server state)
+  // own name (white)
   const me = otherPlayers[clientId];
   const myName = (me && me.name) ? me.name : (player.name || '');
-  ctx.fillStyle = '#112';
+  ctx.fillStyle = '#ffffff';
   ctx.font = '12px Arial';
   ctx.fillText(myName, player.x, player.y - 6);
 
@@ -211,3 +210,30 @@ socket.on('state', players => {
 });
 
 loop();
+
+// Mobile / touch controls: show buttons on Android and wire events
+const touchControls = document.getElementById('touchControls');
+const touchLeft = document.getElementById('touchLeft');
+const touchRight = document.getElementById('touchRight');
+const isAndroid = /Android/i.test(navigator.userAgent) || (/Android/i.test(navigator.platform || ''));
+if(isAndroid && touchControls){
+  touchControls.style.display = 'flex';
+
+  // touch buttons act like holding A/D
+  function setKey(k,v){ keys[k]=v; }
+
+  touchLeft.addEventListener('pointerdown', e=>{ e.preventDefault(); setKey('a', true); });
+  touchLeft.addEventListener('pointerup', e=>{ e.preventDefault(); setKey('a', false); });
+  touchLeft.addEventListener('pointercancel', e=>{ e.preventDefault(); setKey('a', false); });
+
+  touchRight.addEventListener('pointerdown', e=>{ e.preventDefault(); setKey('d', true); });
+  touchRight.addEventListener('pointerup', e=>{ e.preventDefault(); setKey('d', false); });
+  touchRight.addEventListener('pointercancel', e=>{ e.preventDefault(); setKey('d', false); });
+
+  // tap the canvas to jump
+  canvas.addEventListener('pointerdown', e=>{
+    // if pointer down landed on a touch button, ignore (handled above)
+    // otherwise trigger jump
+    if(player.onGround){ player.vy = -player.jumpPower; player.onGround = false; }
+  });
+}

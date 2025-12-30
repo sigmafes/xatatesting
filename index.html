@@ -17,10 +17,15 @@
   <div class="chat" id="chat">
     <div class="chat-messages" id="chatMessages"></div>
     <div class="chat-input">
-      <input id="chatName" type="text" placeholder="[Nombre]" style="width:120px" maxlength="32">
       <input id="chatInput" type="text" placeholder="Mensaje aquí">
       <button id="chatBtn">OK</button>
     </div>
+  </div>
+
+  <!-- touch controls for mobile (hidden by default) -->
+  <div id="touchControls" class="touch-controls" style="display:none">
+    <button id="touchLeft" class="touch-btn">◀</button>
+    <button id="touchRight" class="touch-btn">▶</button>
   </div>
 
   <script src="/socket.io/socket.io.js"></script>
