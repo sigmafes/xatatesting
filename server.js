@@ -135,23 +135,23 @@ setInterval(()=>{
       const p = players[pid];
       if(!p || p.dead) continue;
       if(b.x < p.x + p.w && b.x + b.w > p.x && b.y < p.y + p.h && b.y + b.h > p.y){
-        // apply absolute horizontal velocity (drag without player resistance)
-        const pushX = b.vx * 1.0;
-        // apply a small downward component so player doesn't float
-        const pushY = Math.min(Math.abs(b.vy) * 0.15, 6);
-        // set absolute velocities (overwrite) so there's no player resistance
+        // apply full box velocity to player so the player is dragged
+        // in the same direction and magnitude as the box (no resistance)
+        const pushX = b.vx;
+        const pushY = b.vy;
+        // overwrite player velocities with box velocities
         p.vx = pushX;
         p.vy = pushY;
-        // also immediately update server-side position to reflect the push
-        p.x += pushX * 1.0;
-        p.y += pushY * 1.0;
+        // nudge player position slightly along box direction to separate them
+        p.x += Math.sign(pushX) * Math.min(Math.abs(pushX), 8);
+        p.y += Math.sign(pushY) * Math.min(Math.abs(pushY), 8);
         // mark server authoritative update timestamp and force window
         p.serverUpdate = Date.now();
-        p.forceVelUntil = Date.now() + 1000; // ms during which client must not override velocity
+        p.forceVelUntil = Date.now() + 900; // ms during which client must not override velocity
         // separate box from player to avoid sticking
         if(b.vx > 0) b.x = p.x + p.w;
         else b.x = p.x - b.w;
-        // damp box velocity a bit
+        // damp box velocity a bit so it can continue but lose some energy
         b.vx *= 0.5;
         b.vy *= 0.5;
       }

@@ -142,34 +142,32 @@ function rectsIntersect(a,b){
 function update(){
   // if dead, don't process movement
   if(player.dead) return;
-  // horizontal input A/D
+  // horizontal input A/D and jump
   let left = keys['a'] || keys['arrowleft'];
   let right = keys['d'] || keys['arrowright'];
   let jump = keys['w'] || keys[' '] || keys['arrowup'];
 
-  if(left){ player.vx = -player.speed; }
-  else if(right){ player.vx = player.speed; }
-  else { player.vx = 0; }
-
   // If server forced velocity window is active, don't override vx/vy with input
   const now = Date.now();
-  if(now < (player.forceVelUntil || 0)){
-    // skip overriding vx (keep server-applied velocity)
-  } else {
+  const isForced = now < (player.forceVelUntil || 0);
+
+  if(!isForced){
     if(left){ player.vx = -player.speed; }
     else if(right){ player.vx = player.speed; }
-    else { if(!(left||right)) player.vx = 0; }
+    else { player.vx = 0; }
+
+    // update facing
+    if(left) player.facing = -1;
+    else if(right) player.facing = 1;
+
+    // jump only allowed when not forced
+    if(jump && player.onGround){ player.vy = -player.jumpPower; player.onGround = false; }
+    // apply gravity normally
+    player.vy += gravity;
+  } else {
+    // during forced velocity window: do not apply gravity or input overrides
+    // keep server-applied vx/vy intact so the player is dragged exactly
   }
-
-  // update facing
-  if(left) player.facing = -1;
-  else if(right) player.facing = 1;
-
-  // jump
-  if(jump && player.onGround){ player.vy = -player.jumpPower; player.onGround = false; }
-
-  // apply gravity
-  player.vy += gravity;
 
   // apply velocities
   player.x += player.vx;
