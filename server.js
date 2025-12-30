@@ -65,11 +65,11 @@ io.on('connection', socket => {
 
   socket.on('spawnBox', vec => {
     if(!players[id] || players[id].dead) return;
-    const speed = 10;
+    const speed = 30; // increased x3
     const boxId = id + '_' + Date.now();
     const owner = id;
-    const px = players[id].x + players[id].w/2 - 8;
-    const py = players[id].y + players[id].h/2 - 8;
+    const px = players[id].x + players[id].w/2 - 16;
+    const py = players[id].y + players[id].h/2 - 16;
     const dx = (vec && typeof vec.dx === 'number') ? vec.dx : 1;
     const dy = (vec && typeof vec.dy === 'number') ? vec.dy : -0.2;
     boxes[boxId] = {
@@ -77,8 +77,8 @@ io.on('connection', socket => {
       owner,
       x: px + dx*20,
       y: py + dy*20,
-      w: 16,
-      h: 16,
+      w: 32,
+      h: 32,
       vx: dx * speed,
       vy: dy * speed,
       born: Date.now()
@@ -133,12 +133,20 @@ setInterval(()=>{
       const p = players[pid];
       if(!p || p.dead) continue;
       if(b.x < p.x + p.w && b.x + b.w > p.x && b.y < p.y + p.h && b.y + b.h > p.y){
-        // apply push
-        p.vx = (p.vx || 0) + b.vx * 0.4;
-        p.vy = (p.vy || 0) - Math.abs(b.vy) * 0.2;
+        // apply stronger push (x3 effect)
+        const pushX = b.vx * 1.2;
+        const pushY = -Math.abs(b.vy) * 0.6;
+        p.vx = (p.vx || 0) + pushX;
+        p.vy = (p.vy || 0) + pushY;
+        // also nudge player's position immediately so client sees movement
+        p.x += pushX * 0.6;
+        p.y += pushY * 0.6;
+        // separate box from player to avoid sticking
+        if(b.vx > 0) b.x = p.x + p.w;
+        else b.x = p.x - b.w;
         // damp box velocity a bit
-        b.vx *= 0.6;
-        b.vy *= 0.6;
+        b.vx *= 0.5;
+        b.vy *= 0.5;
       }
     }
   }
