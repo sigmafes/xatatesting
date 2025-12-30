@@ -288,12 +288,17 @@ function adjustGuiScale(){
   const chatEl = document.getElementById('chat');
   const controlsEl = document.getElementById('touchControls');
   // scale relative to canvas logical size
-  const scale = Math.min(window.innerWidth / WIDTH, window.innerHeight / HEIGHT, 1);
+  const maxW = Math.max(100, window.innerWidth - 16);
+  const maxH = Math.max(100, window.innerHeight - 16);
+  const scale = Math.min(maxW / WIDTH, maxH / HEIGHT, 1);
+  // scale GUI elements (so UI remains readable) using CSS transform
   [nameboxEl, chatEl, controlsEl].forEach(el => { if(el) el.style.transform = `scale(${scale})`; });
-  // scale the canvas visually to fit on Android
-  if(canvas) {
-    canvas.style.transformOrigin = 'center center';
-    canvas.style.transform = `scale(${scale})`;
+  // shrink the canvas visually by changing its CSS size while keeping internal resolution
+  if(canvas){
+    canvas.style.width = Math.floor(WIDTH * scale) + 'px';
+    canvas.style.height = Math.floor(HEIGHT * scale) + 'px';
+    // remove previous transform-based scaling (if any)
+    canvas.style.transform = '';
   }
 }
 
